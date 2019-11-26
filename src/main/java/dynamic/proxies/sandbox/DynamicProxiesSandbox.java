@@ -1,106 +1,81 @@
 package dynamic.proxies.sandbox;
 
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Proxy;
+import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Stream;
 
 import dynamic.proxies.entities.Author;
 import dynamic.proxies.entities.Person;
-import dynamic.proxies.handlers.DefaultMethodExecutor;
-import dynamic.proxies.handlers.MethodCallInterceptor;
-import dynamic.proxies.handlers.MethodCallInterpreter;
+import dynamic.proxies.entities.Publisher;
+import dynamic.proxies.java.MethodCallInterceptor;
+import dynamic.proxies.java.Proxies;
+import dynamic.proxies.javassist.JavassistProxies;
+import javassist.util.proxy.MethodHandler;
 
-public class DynamicProxiesSandbox {
+public class DynamicProxiesSandbox
+{
 
-	public static void main(String[] args)
-	{
-		// Dummy data
-		Person person = new Author("Charles", "Dickens", 24);
+  public static void main(String[] args) throws Exception
+  {
+    // Dummy data
+    Person author = new Author("Charles", "Dickens", 24);
 
-		// List for storing information about intercepted method calls
-		List<String> callDetails = new ArrayList<>();
+    // List for storing information about intercepted method calls
+    List<String> callDetails = new ArrayList<>();
 
-		// A method call interceptor
-		MethodCallInterceptor concreteInterceptor = (proxy, method, arguments, executor) -> {
-			Object result = executor.invoke(proxy, arguments);
-			callDetails.add(String.format("%s: %s -> %s", method.getName(), Arrays.toString(arguments), result));
-			return result;
-		};
+    // A method call interceptor
+    MethodCallInterceptor concreteInterceptor = (proxy, method, arguments, executor) -> {
+      Object result = executor.invoke(proxy, arguments);
+      callDetails.add(String.format("%s: %s -> %s", method.getName(), Arrays.toString(arguments), result));
+      return result;
+    };
 
-		Person proxy = interceptingProxy(person, Person.class, concreteInterceptor);
-		proxy.setAge(28);
-		proxy.getFirstname();
-		proxy.getLastname();
-		
-		// Print test data
-		for (String call : callDetails)
-		{
-			System.out.println(call);
-		}
-	}
+    Person proxy = Proxies.interceptingProxy(author, Person.class, concreteInterceptor);
+    proxy.setAge(28);
+    proxy.getFirstname();
+    proxy.getLastname();
 
-	/*
-	 * Playing around with dynamic proxies
-	 */
-	@SuppressWarnings("unchecked")
-	public static <T> T simpleProxy(Class<? extends T> iface, InvocationHandler h, Class<?>... otherIfaces)
-	{
-		Class<?>[] allInterfaces = Stream.concat(Stream.of(iface), Stream.of(otherIfaces)).distinct()
-				.toArray(Class<?>[]::new);
+    // Print test data
+    for (String call : callDetails)
+    {
+      System.out.println(call);
+    }
 
-		return (T) Proxy.newProxyInstance(iface.getClassLoader(), allInterfaces, h);
-	}
+    /*
+     * CGLIB
+     */
+    Class<?>[] proxyArgs = { String.class };
+    Object[] proxyArgVals = { "Penguin Classics" };
 
-	public static <T> T interceptingProxy(T target, Class<T> iface, MethodCallInterceptor interceptor)
-	{
-		return simpleProxy(iface, intercepting(handlingDefaultMethods(binding(target)), interceptor));
-	}
+    // Publisher publisherNoOpProxy = (Publisher) CglibProxies.noOpProxy(Publisher.class);
+    // System.out.println(publisherNoOpProxy.employ((Author) author));
 
-	/*
-	 * Proxies, helper methods
-	 */
-	private static MethodCallInterpreter binding(Object target, MethodCallInterpreter unboundInterpreter)
-	{
-		return method -> {
-			if (method.getDeclaringClass().isAssignableFrom(target.getClass()))
-			{
-				return (proxy, args) -> method.invoke(target, args);
-			}
-			else
-			{
-				return unboundInterpreter.interpret(method);
-			}
-		};
-	}
+    // Publisher publisherInterceptorProxy = (Publisher) CglibProxies.interceptorProxy(Publisher.class, "Penguin
+    // Classics");
+    // System.out.println(publisherInterceptorProxy.employ((Author) author));
 
-	private static MethodCallInterpreter binding(Object target)
-	{
-		return binding(target, method -> {
-			throw new IllegalStateException(
-					String.format("Target class %s does not support method %s", target.getClass(), method));
-		});
-	}
+    // Publisher publisherProxy = (Publisher) CglibProxies.proxy(Publisher.class,
+    // new CglibInterceptor("Penguin Classics is best!"));
+    // System.out.println(publisherProxy.employ((Author) author));
 
-	private static MethodCallInterpreter handlingDefaultMethods(MethodCallInterpreter nonDefaultInterpreter)
-	{
-		return method -> {
-			if (method.isDefault())
-			{
-				return DefaultMethodExecutor.forMethod(method);
-			}
-			else
-			{
-				return nonDefaultInterpreter.interpret(method);
-			}
-		};
-	}
+    /*
+     * Javassist
+     */
+    MethodHandler handler = new MethodHandler()
+    {
 
-	private static MethodCallInterpreter intercepting(MethodCallInterpreter interpreter,
-			MethodCallInterceptor interceptor)
-	{
-		return method -> interceptor.intercepting(method, interpreter.interpret(method));
-	}
+      @Override
+      public Object invoke(Object self, Method thisMethod, Method proceed, Object[] args) throws Throwable
+      {
+        System.out.println("Publisher says:");
+        return proceed.invoke(self, args); // Execute the original method
+      }
+    };
+
+    Publisher javassistProxy = (Publisher) JavassistProxies.proxy(Publisher.class, proxyArgs, proxyArgVals, handler);
+    System.out.println(javassistProxy.employ((Author) author));
+
+  }
+
 }

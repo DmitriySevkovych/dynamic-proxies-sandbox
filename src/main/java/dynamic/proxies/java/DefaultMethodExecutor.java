@@ -1,4 +1,4 @@
-package dynamic.proxies.handlers;
+package dynamic.proxies.java;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
