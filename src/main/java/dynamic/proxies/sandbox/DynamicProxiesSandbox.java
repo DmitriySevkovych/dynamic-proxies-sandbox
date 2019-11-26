@@ -1,24 +1,22 @@
 package dynamic.proxies.sandbox;
 
-import java.lang.reflect.InvocationHandler;
-import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Stream;
 
+import dynamic.proxies.cglib.CglibInterceptor;
+import dynamic.proxies.cglib.CglibProxies;
 import dynamic.proxies.entities.Author;
 import dynamic.proxies.entities.Person;
-import dynamic.proxies.handlers.DefaultMethodExecutor;
-import dynamic.proxies.handlers.MethodCallInterceptor;
-import dynamic.proxies.handlers.MethodCallInterpreter;
+import dynamic.proxies.entities.Publisher;
+import dynamic.proxies.java.MethodCallInterceptor;
+import dynamic.proxies.java.Proxies;
 
 public class DynamicProxiesSandbox {
 
-	public static void main(String[] args)
-	{
+	public static void main(String[] args) {
 		// Dummy data
-		Person person = new Author("Charles", "Dickens", 24);
+		Person author = new Author("Charles", "Dickens", 24);
 
 		// List for storing information about intercepted method calls
 		List<String> callDetails = new ArrayList<>();
@@ -30,77 +28,30 @@ public class DynamicProxiesSandbox {
 			return result;
 		};
 
-		Person proxy = interceptingProxy(person, Person.class, concreteInterceptor);
+		Person proxy = Proxies.interceptingProxy(author, Person.class, concreteInterceptor);
 		proxy.setAge(28);
 		proxy.getFirstname();
 		proxy.getLastname();
-		
+
 		// Print test data
-		for (String call : callDetails)
-		{
+		for (String call : callDetails) {
 			System.out.println(call);
 		}
+
+		/*
+		 * CGLIB
+		 */
+//		Class<?>[] proxyArgs = { String.class };
+//		Object[] proxyArgVals = { "Penguin Classics" };
+
+//		Publisher publisherNoOpProxy = (Publisher) CglibProxies.noOpProxy(Publisher.class);
+//		System.out.println(publisherNoOpProxy.employ((Author) author));
+		
+//		Publisher publisherInterceptorProxy = (Publisher) CglibProxies.interceptorProxy(Publisher.class, "Penguin Classics");
+//		System.out.println(publisherInterceptorProxy.employ((Author) author));
+		
+		Publisher publisherProxy = (Publisher) CglibProxies.proxy(Publisher.class, new CglibInterceptor("Penguin Classics is best!"));
+		System.out.println(publisherProxy.employ((Author) author));
 	}
 
-	/*
-	 * Playing around with dynamic proxies
-	 */
-	@SuppressWarnings("unchecked")
-	public static <T> T simpleProxy(Class<? extends T> iface, InvocationHandler h, Class<?>... otherIfaces)
-	{
-		Class<?>[] allInterfaces = Stream.concat(Stream.of(iface), Stream.of(otherIfaces)).distinct()
-				.toArray(Class<?>[]::new);
-
-		return (T) Proxy.newProxyInstance(iface.getClassLoader(), allInterfaces, h);
-	}
-
-	public static <T> T interceptingProxy(T target, Class<T> iface, MethodCallInterceptor interceptor)
-	{
-		return simpleProxy(iface, intercepting(handlingDefaultMethods(binding(target)), interceptor));
-	}
-
-	/*
-	 * Proxies, helper methods
-	 */
-	private static MethodCallInterpreter binding(Object target, MethodCallInterpreter unboundInterpreter)
-	{
-		return method -> {
-			if (method.getDeclaringClass().isAssignableFrom(target.getClass()))
-			{
-				return (proxy, args) -> method.invoke(target, args);
-			}
-			else
-			{
-				return unboundInterpreter.interpret(method);
-			}
-		};
-	}
-
-	private static MethodCallInterpreter binding(Object target)
-	{
-		return binding(target, method -> {
-			throw new IllegalStateException(
-					String.format("Target class %s does not support method %s", target.getClass(), method));
-		});
-	}
-
-	private static MethodCallInterpreter handlingDefaultMethods(MethodCallInterpreter nonDefaultInterpreter)
-	{
-		return method -> {
-			if (method.isDefault())
-			{
-				return DefaultMethodExecutor.forMethod(method);
-			}
-			else
-			{
-				return nonDefaultInterpreter.interpret(method);
-			}
-		};
-	}
-
-	private static MethodCallInterpreter intercepting(MethodCallInterpreter interpreter,
-			MethodCallInterceptor interceptor)
-	{
-		return method -> interceptor.intercepting(method, interpreter.interpret(method));
-	}
 }
