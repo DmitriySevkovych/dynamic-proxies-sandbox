@@ -34,4 +34,7 @@ dependencies {
     // https://mvnrepository.com/artifact/cglib/cglib
 	compile 'cglib:cglib:3.3.0'
     
+    // https://mvnrepository.com/artifact/org.javassist/javassist
+	compile 'org.javassist:javassist:3.26.0-GA'
+    
 }

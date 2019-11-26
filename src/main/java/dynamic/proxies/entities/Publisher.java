@@ -1,14 +1,20 @@
 package dynamic.proxies.entities;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
-public class Publisher {
+@NoArgsConstructor
+@AllArgsConstructor
+public class Publisher
+{
 
-	private String name;
+  private String name;
 
-	public String employ(Author author) {
-		return "Employ " + author.toString();
-	}
+  public String employ(Author author)
+  {
+    return "Employ " + author.toString();
+  }
 
 }
