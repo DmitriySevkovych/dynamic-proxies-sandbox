@@ -8,3 +8,9 @@
  */
 
 rootProject.name = 'dynamic-proxies-sandbox'
+
+// Swagger Codegen
+def serverName = 'sandbox-swagger'
+
+file(serverName).mkdir()
+include serverName
